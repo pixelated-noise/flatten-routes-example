@@ -78,6 +78,9 @@
          #(when (-> % z/node keyword?)
             [(->> % z/path (map first) (filter string?) str/join) (z/node %)]))))
 
+;; tree-seq + metadata "smuggling" solution contributed by Jacob Maine
+;; (https://github.com/mainej) after blog post publication.
+
 (defn base-node? [[path-part sec]]
   (and (string? path-part)
        (keyword? sec)))
