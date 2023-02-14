@@ -78,10 +78,38 @@
          #(when (-> % z/node keyword?)
             [(->> % z/path (map first) (filter string?) str/join) (z/node %)]))))
 
+(defn base-node? [[path-part sec]]
+  (and (string? path-part)
+       (keyword? sec)))
+
+(defn flatten-routes-tree-seq [routes]
+  (->> routes
+       ;; walk the tree, collecting ancestor info (parent paths) in meta.
+       (tree-seq
+        ;; base nodes don't have children
+        (complement base-node?)
+        ;; prefix and sibling nodes do; extract the children
+        (fn [[path-part & rst :as all]]
+          (let [parent-path (get (meta all) ::parent-path "")]
+            (if (string? path-part)
+              ;; prefix node; extend the parent-path
+              (map #(with-meta % {::parent-path (str parent-path path-part)})
+                   rst)
+              ;; else, sibling nodes; maintain the parent-path
+              (map #(with-meta % {::parent-path parent-path})
+                   all)))))
+       ;; tree-seq returns every node in the tree; we want only the base nodes
+       (filter base-node?)
+       ;; a final pass to get the full path to the node
+       (map (fn [[path-part keyword :as node]]
+              [(str (::parent-path (meta node)) path-part) keyword]))
+       (into {})))
+
 (assert
  (= (flatten-routes-recursive the-routes)
     (flatten-routes-pre-1:11 the-routes)
     (flatten-routes-iter the-routes)
     (flatten-routes-zipper the-routes)
     (flatten-routes-iteration the-routes)
-    (flatten-routes-generic the-routes)))
+    (flatten-routes-generic the-routes)
+    (flatten-routes-tree-seq the-routes)))
